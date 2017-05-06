@@ -1,0 +1,15 @@
+mysql-db-config = {
+  url = "jdbc:mysql://{host_here}:{port_here}/{db_name_here}"  
+  user = "db_user"
+  password = "db_password"
+  driver = com.mysql.jdbc.Driver
+  connectionPool = disabled
+  keepAliveConnection = true
+}
+
+h2-db-config = {
+  connectionPool      = disabled
+  url                 = "jdbc:h2:mem:{db_name_here}"
+  driver              = "org.h2.Driver"
+  keepAliveConnection = true
+}
