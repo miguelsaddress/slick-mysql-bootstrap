@@ -1,6 +1,7 @@
 package samples
-
-import scala.util.Try
+import scala.concurrent.{Future}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Try, Success, Failure}
 import slick.driver.{H2Driver, MySQLDriver}
 
 import database.profile.DatabaseLayer
@@ -13,32 +14,51 @@ object Main {
   // Let's go! ----------------------------------
 
   def main(args: Array[String]): Unit = {
-    
-    println("="*16)
-    println("Running in Mysql")
-    println("="*16)
-    run(mysqlLayer)
+    Try(runWith(mysqlLayer)) match {
+      case Success(results) => showResults("MySql", results)
+      case Failure(_) => println("\n\t\tErrors run for Mysql\n")
+    }
 
-    println("="*16)
-    println("Running in H2")
-    println("="*16)
-    run(h2Layer)
+    Try(runWith(h2Layer)) match {
+      case Success(results) => showResults("H2", results)
+      case Failure(_) => println("\n\t\tErrors run for H2\n")
+    }
   }
 
-  def run(databaseLayer: DatabaseLayer[_]) = {
+  def showResults[A](dbLayerName: String, results: Future[(Seq[A], Seq[A])]) = {
+    results onComplete {
+      case Failure(t) => println(t.getMessage)
+      case Success((user, allUsers)) => 
+        val message = s"Successfully Run for ${dbLayerName}"
+        val nOfStars = message.length
+        println("="*nOfStars)
+        println(message) 
+        println("="*nOfStars)
+
+        user.foreach(println)
+        println
+        allUsers.foreach(println)
+    }
+  }
+
+  def runWith(databaseLayer: DatabaseLayer[_]) = {
     import databaseLayer._
-    Try(exec(dropUsersTable))
-    
-    val actions = 
-      createUsersTable andThen
+
+    val seedingData = 
       createUser(User("user1", "email1")) andThen
       createUser(User("user2", "email2")) andThen
       createUser(User("user3", "email3")) andThen
-      createUser(User("user4", "email4")) andThen
-      findUserById(1)
+      createUser(User("user4", "email4")) //andThen
+    
+    exec(createUsersTable)
+    exec(seedingData)
 
-    exec(actions).map(println)
-    exec(selectAll).foreach(println)
+    val results = for {
+      user <- db.run(findUserById(3))
+      all <- db.run(selectAll)
+    } yield (user, all)
+
+    results
   }
 
 }
